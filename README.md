@@ -25,6 +25,7 @@ The following environment variables are used by the bot:
 
 - `TELEGRAM_API_TOKEN` - token for the Telegram Bot API
 - `LOG_RECIPIENTS` (optional) - comma-separated list of Telegram chat IDs to which tracebacks will be sent
-- `ASAP_UPDATE_FREQ` (optional) - update interval (in seconds) for feeds in `asap` mode
+- `ASAP_UPDATE_FREQ` (optional) - update interval (in seconds) for feeds in `asap` mode (defaults to 5 minutes)
+- `BOT_DATA` (optional) - directory from which pickle files will be read from/written to to persist user settings across bot restarts
 
 The prompts may be customized or translated to a new language in the `strings` dict in `localconfig.py`.

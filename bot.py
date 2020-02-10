@@ -24,7 +24,7 @@ from telegram.ext import (
 from telegram.ext.dispatcher import run_async
 
 from fpwrapper import FeedCollection, FeedCollectionError
-from localconfig import strings, devs, asap_freq, api_token
+from localconfig import strings, envs
 
 # declare symbols for conversation states
 MAIN, ADD_URL, ADD_MODE, REMOVE_URL, EDIT_URL, EDIT_REPR = map(chr, range(6))
@@ -54,8 +54,8 @@ def start(upd: Update, ctx: CallbackContext):
     # enroll user in job_queue
     ctx.job_queue.run_repeating(
         callback=asap_update,
-        interval=asap_freq,
-        first=random.randrange(0, asap_freq), # random staggering
+        interval=envs["asap_freq"],
+        first=random.randrange(0, envs["asap_freq"]), # random staggering
         context=upd.effective_chat.id,
     )
     ctx.job_queue.run_daily(
@@ -222,7 +222,7 @@ def error(upd: Update, ctx: CallbackContext):
     # an empty string works fine.
     trace = "".join(traceback.format_tb(sys.exc_info()[2]))
     
-    for dev_id in devs:
+    for dev_id in envs["devs"]:
         ctx.bot.send_message(
             chat_id=dev_id,
             parse_mode=ParseMode.MARKDOWN,
@@ -298,9 +298,9 @@ def main():
     )
 
     updater = Updater(
-        token=api_token,
+        token=envs["api_token"],
         use_context=True,
-        persistence=PicklePersistence(filename="bot.pkl")
+        persistence=PicklePersistence(filename=f"{envs['pkl_location']}/bot.pkl")
     )
 
     dispatcher = updater.dispatcher
@@ -349,8 +349,8 @@ def main():
     for chat_id in dispatcher.chat_data:
         job_queue.run_repeating(
             callback=asap_update,
-            interval=asap_freq,
-            first=random.randrange(0, asap_freq), # random staggering
+            interval=envs["asap_freq"],
+            first=random.randrange(0, envs["asap_freq"]), # random staggering
             context=chat_id,
         )
         job_queue.run_daily(
