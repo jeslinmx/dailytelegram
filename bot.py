@@ -347,17 +347,19 @@ def main():
     job_queue = dispatcher.job_queue
     # enqueue update jobs for persisted users
     for chat_id in dispatcher.chat_data:
-        job_queue.run_repeating(
-            callback=asap_update,
-            interval=envs["asap_freq"],
-            first=random.randrange(0, envs["asap_freq"]), # random staggering
-            context=chat_id,
-        )
-        job_queue.run_daily(
-            callback=digest_update,
-            time=dispatcher.chat_data[chat_id]["digesttime"],
-            context=chat_id,
-        )
+        # check if chat_data is actually populated by data from /start
+        if dispatcher.chat_data[chat_id]:
+            job_queue.run_repeating(
+                callback=asap_update,
+                interval=envs["asap_freq"],
+                first=random.randrange(0, envs["asap_freq"]), # random staggering
+                context=chat_id,
+            )
+            job_queue.run_daily(
+                callback=digest_update,
+                time=dispatcher.chat_data[chat_id]["digesttime"],
+                context=chat_id,
+            )
 
     updater.start_polling()
     updater.idle()
