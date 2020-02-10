@@ -1,8 +1,8 @@
 import os
 from textwrap import dedent
 
-devs = os.getenv("LOG_RECIPIENTS").split(",")
-asap_freq = int(os.getenv("ASAP_UPDATE_FREQ"))
+devs = os.getenv("LOG_RECIPIENTS", "").split(",")
+asap_freq = int(os.getenv("ASAP_UPDATE_FREQ", 5 * 60))
 api_token = os.getenv("TELEGRAM_API_TOKEN")
 
 strings = {
