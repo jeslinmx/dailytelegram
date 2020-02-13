@@ -201,7 +201,10 @@ def remove_command(upd: Update, ctx: CallbackContext):
     return MAIN
 
 def remove_cancel_conversation(upd: Update, ctx: CallbackContext):
-    reply["remove_cancel"](upd, ctx)
+    reply["remove_cancel"](upd, ctx,
+        reply_markup=ReplyKeyboardRemove(selective=True),
+        disable_web_page_preview=True,
+    )
     return MAIN
 
 # job_queue callbacks
