@@ -104,12 +104,18 @@ strings = {
     "reprerror": dedent("""\
         `the repr for {url} is invalid and could not be processed.`
     """),
+    "fperror": dedent("""\
+         An error occurred while parsing the feed {url}. The devs have been notified.
+    """),
+    "fperrorreport": dedent("""\
+         Error encountered while parsing {url}. Traceback:
+         ```{trace}```
+    """),
     "error": dedent("""\
-        An unforseen error occurred. The devs have been notified.
+        An unforeseen error occurred in the bot. The devs have been notified.
     """),
     "errorreport": dedent("""\
-    `{errorType}: {error}` occurred. Traceback:
-
-    ```{trace}```
+        Error encountered in {chat}. Traceback:
+        ```{trace}```
     """),
 }

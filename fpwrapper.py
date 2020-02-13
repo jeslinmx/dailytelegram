@@ -1,5 +1,8 @@
-import time, feedparser
+import sys
+import time
 from concurrent import futures
+
+import feedparser
 
 class Feed(object):
     def __init__(self, feed_url: str):
@@ -12,7 +15,13 @@ class Feed(object):
         self._nullupdate()
 
     def get_new_entries(self):
-        d = feedparser.parse(self.url, etag=self.etag, modified=self.modified)
+        try:
+            # xml/rss parsing and feedparser are complex beasts
+            d = feedparser.parse(self.url, etag=self.etag, modified=self.modified)
+        except Exception as e:
+            # so we just ignore anything that goes wrong with it
+            # and worry about it later.
+            return sys.exc_info()
 
         if d.get("status", None) == 301:
             # if the feed is permanently redirected, update the feed url

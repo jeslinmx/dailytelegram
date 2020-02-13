@@ -1,4 +1,3 @@
-import sys
 import datetime
 import logging
 import random
@@ -205,39 +204,8 @@ def remove_cancel_conversation(upd: Update, ctx: CallbackContext):
     reply["remove_cancel"](upd, ctx)
     return MAIN
 
-# error handlers
-def error(upd: Update, ctx: CallbackContext):
-    # We want to notify the user of this problem. This will always work,
-    # but not notify users if the update is an callback or inline query,
-    # or a poll update. In case you want this, keep in mind that sending
-    # the message could fail
-    if upd.effective_message:
-        upd.effective_message.reply_text(strings["error"])
-    
-    # This traceback is created with accessing the traceback object from
-    # the sys.exc_info, which is returned as the third value of the
-    # returned tuple. Then we use the traceback.format_tb to get the
-    # traceback as a string, which for a weird reason separates the line
-    # breaks in a list, but keeps the linebreaks itself. So just joining
-    # an empty string works fine.
-    trace = "".join(traceback.format_tb(sys.exc_info()[2]))
-    
-    for dev_id in envs["devs"]:
-        ctx.bot.send_message(
-            chat_id=dev_id,
-            parse_mode=ParseMode.MARKDOWN,
-            text=strings["errorreport"].format(
-                error=ctx.error,
-                errorType=type(ctx.error),
-                trace=trace
-            )
-        )
-    
-    # Re-raise the exception for the sake of the logger.
-    raise
-
 # job_queue callbacks
-def format_feeds(fc: FeedCollection, reprs: dict, defaultrepr: str):
+def format_feeds(ctx: CallbackContext, fc: FeedCollection, reprs: dict, defaultrepr: str):
     """Gets new entries from a FeedCollection and formats them according to reprs/defaultrepr"""
     entries = fc.get_new_entries()
     formatted = {}
@@ -252,6 +220,17 @@ def format_feeds(fc: FeedCollection, reprs: dict, defaultrepr: str):
                     feed=fc.feeds[url].metadata,
                 ) for entry in entries[url]
             ]
+        except TypeError:
+            # return a simple string representation
+            # this shoud only occur if an Exception was raised
+            # from parsing this feed, resulting in a exc_info tuple
+            formatted[url] = [strings["fperror"].format(
+                url=url,
+            )]
+            report(ctx, strings["fperrorreport"],
+                url=url,
+                trace="".join(traceback.format_exception(*entries[url])),
+            )
         except KeyError:
             formatted[url] = [strings["reprerror"].format(url=url)]
         # remove feed from result if it is empty
@@ -264,7 +243,7 @@ def asap_update(ctx: CallbackContext):
     chat_id = ctx.job.context
     fc = ctx.dispatcher.chat_data[chat_id]["feeds"]["asap"]
     reprs = ctx.dispatcher.chat_data[chat_id]["reprs"]
-    formatted = format_feeds(fc, reprs, strings["asapdefaultrepr"])
+    formatted = format_feeds(ctx, fc, reprs, strings["asapdefaultrepr"])
     for url in formatted:
         for entry in reversed(formatted[url]):
             ctx.bot.send_message(
@@ -278,7 +257,7 @@ def digest_update(ctx: CallbackContext):
     chat_id = ctx.job.context
     fc = ctx.dispatcher.chat_data[chat_id]["feeds"]["digest"]
     reprs = ctx.dispatcher.chat_data[chat_id]["reprs"]
-    formatted = format_feeds(fc, reprs, strings["digestdefaultrepr"])
+    formatted = format_feeds(ctx, fc, reprs, strings["digestdefaultrepr"])
     for url in formatted:
         msgheader = strings["digestheader"].format(
             feed=fc.feeds[url].metadata,
@@ -288,6 +267,33 @@ def digest_update(ctx: CallbackContext):
             chat_id=chat_id,
             text="\n".join([msgheader, msgbody]),
             parse_mode=ParseMode.MARKDOWN
+        )
+
+# error handlers
+def bot_error(upd: Update, ctx: CallbackContext):
+    # notify user
+    if upd.effective_message:
+        upd.effective_message.reply_text(strings["error"])
+
+    # report to devs
+    report(ctx, strings["errorreport"],
+        chat = (
+            upd.effective_user.mention_markdown() if upd.effective_user
+            else f"@{upd.effective_chat.username}" if upd.effective_chat
+            else "???"
+        ),
+        trace=traceback.format_exc(),
+    )
+    
+    # Re-raise the exception for the sake of the logger.
+    raise
+
+def report(ctx: CallbackContext, template: str, **kwargs):
+    for dev_id in envs["devs"]:
+        ctx.bot.send_message(
+            chat_id=dev_id,
+            parse_mode=ParseMode.MARKDOWN,
+            text=template.format(**kwargs),
         )
 
 
@@ -342,7 +348,7 @@ def main():
         name="main_conv"
     ))
     dispatcher.add_handler(MessageHandler(Filters.all, reply["uninitialized"]))
-    dispatcher.add_error_handler(error)
+    dispatcher.add_error_handler(bot_error)
 
     job_queue = dispatcher.job_queue
     # enqueue update jobs for persisted users
