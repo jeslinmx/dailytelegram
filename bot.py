@@ -84,21 +84,20 @@ def show_feeds(upd: Update, ctx: CallbackContext):
 # add flow callbacks
 def add_command(upd: Update, ctx: CallbackContext):
     """Processes args of /add and hands over to add_feed"""
-    # look for url in first argument
-    if len(ctx.args) >= 1 and ctx.args[0] in upd.message.parse_entities(types=[MessageEntity.URL]).values():
-        ctx.chat_data["add_url"] = ctx.args[0]
+    # look for urls
+    if upd.message.parse_entities(types=[MessageEntity.URL]).values():
+        ctx.chat_data["add_url"] = list(upd.message.parse_entities(types=[MessageEntity.URL]).values())
 
-    # look for mode in second argument
-    if len(ctx.args) >= 2 and ctx.args[1].lower() in ("digest", "asap"):
-        ctx.chat_data["add_mode"] = ctx.args[1]
+    # look for mode in last argument
+    if len(ctx.args) >= 1 and ctx.args[-1].lower() in ("digest", "asap"):
+        ctx.chat_data["add_mode"] = ctx.args[-1].lower()
     
     return add_feed(upd, ctx)
 
 def add_url_step(upd: Update, ctx: CallbackContext):
     """Processes feed URL and hands over to add_feed"""
-    urls = list(upd.message.parse_entities(types=[MessageEntity.URL]).values())
-    if len(urls) == 1:
-        ctx.chat_data["add_url"] = urls[0]
+    if upd.message.parse_entities(types=[MessageEntity.URL]).values():
+        ctx.chat_data["add_url"] = list(upd.message.parse_entities(types=[MessageEntity.URL]).values())
         return add_feed(upd, ctx)
     else:
         return reply["add_urlwhat"](upd, ctx)
@@ -113,12 +112,7 @@ def add_cancel_conversation(upd: Update, ctx: CallbackContext):
     reply["add_cancel"](upd, ctx,
         reply_markup=ReplyKeyboardRemove(selective=True)
     )
-    try:
-        del ctx.chat_data["add_url"]
-        del ctx.chat_data["add_mode"]
-    except KeyError:
-        pass
-    return MAIN
+    return add_cleanup(upd, ctx)
 
 def add_feed(upd: Update, ctx: CallbackContext):
     """Checks ctx for args and adds feed/directs to correct state"""
@@ -137,24 +131,38 @@ def add_feed(upd: Update, ctx: CallbackContext):
         )
         return ADD_MODE
     else:
-        # proceed to add feed
-        try:
-            ctx.chat_data["feeds"][ctx.chat_data["add_mode"]].add_feed(ctx.chat_data["add_url"])
-        except FeedCollectionError:
-            # on duplicate url, leave add flow
-            reply["add_dupurl"](upd, ctx)
-            return add_cancel_conversation(upd, ctx)
-        else:
-            reply["add_success"](upd, ctx,
-                reply_markup=ReplyKeyboardRemove(selective=True)
-            )
-            # end conversation
+        # proceed to add feeds
+        success = []
+        duplicates = []
+        for url in ctx.chat_data["add_url"]:
             try:
-                del ctx.chat_data["add_url"]
-                del ctx.chat_data["add_mode"]
-            except KeyError:
-                pass
-            return MAIN
+                ctx.chat_data["feeds"][ctx.chat_data["add_mode"]].add_feed(url)
+            except FeedCollectionError:
+                duplicates.append(url)
+            else:
+                success.append(url)
+        if success:
+            reply["add_success"](upd, ctx,
+                mapping={"urls":", ".join(success)},
+                reply_markup=ReplyKeyboardRemove(selective=True),
+                disable_web_page_preview=True,
+            )
+        if duplicates:
+            reply["add_dupurl"](upd, ctx,
+                mapping={"urls":", ".join(duplicates)},
+                reply_markup=ReplyKeyboardRemove(selective=True),
+                disable_web_page_preview=True,
+            )
+        return add_cleanup(upd, ctx)
+
+def add_cleanup(upd: Update, ctx: CallbackContext):
+    """Clears out add context before returning to MAIN"""
+    try:
+        del ctx.chat_data["add_url"]
+        del ctx.chat_data["add_mode"]
+    except KeyError:
+        pass
+    return MAIN
 
 # remove flow callbacks
 def remove_command(upd: Update, ctx: CallbackContext):
@@ -177,16 +185,16 @@ def remove_command(upd: Update, ctx: CallbackContext):
         return REMOVE_URL
     # remove feeds from either FeedCollection
     for url in urls:
-        _excounter = 0
+        _exc_counter = 0
         try:
             ctx.chat_data["feeds"]["asap"].remove_feed(url)
         except FeedCollectionError:
-            _excounter += 1
+            _exc_counter += 1
         try:
             ctx.chat_data["feeds"]["digest"].remove_feed(url)
         except FeedCollectionError:
-            _excounter += 1
-        if _excounter >= 2:
+            _exc_counter += 1
+        if _exc_counter >= 2:
             reply["remove_feednotfound"](upd, ctx,
                 mapping={"url": url},
                 reply_markup=ReplyKeyboardRemove(selective=True),

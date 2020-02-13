@@ -53,10 +53,10 @@ strings = {
         You currently have no feeds. You may want to /add some feeds, or get /help on how to use this bot.
     """),
     "add_success": dedent("""\
-        Feed added successfully.
+        Successfully subscribed to {urls}
     """),
     "add_dupurl": dedent("""\
-        You are already subscribed to this feed.
+        You are already subscribed to {urls}.
     """),
     "add_requesturl": dedent("""\
         Please enter the feed URL.
