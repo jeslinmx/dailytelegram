@@ -105,7 +105,7 @@ strings = {
         `the repr for {url} is invalid and could not be processed.`
     """),
     "fperror": dedent("""\
-         An error occurred while parsing the feed {url}. The devs have been notified.
+         An error occurred while parsing the feed {url}. The devs have been notified; notifications from this feed have been put on pause for 24 hours while we see what can be done.
     """),
     "fperrorreport": dedent("""\
          Error encountered while parsing {url}. Traceback:

@@ -15,12 +15,14 @@ class Feed(object):
         self._nullupdate()
 
     def get_new_entries(self):
+        """Downloads and parses the RSS feed, returning new entries (by timestamp)."""
         try:
             # xml/rss parsing and feedparser are complex beasts
             d = feedparser.parse(self.url, etag=self.etag, modified=self.modified)
         except Exception:
             # so we just ignore anything that goes wrong with it
             # and worry about it later.
+            self.pause_updates()
             return sys.exc_info()
 
         if d.get("status", None) == 301:
@@ -44,6 +46,9 @@ class Feed(object):
             "description": d.feed.get("description", "")
         }
 
+        self.etag = d.get("etag", "")
+        self.modified = d.get("modified", "")
+
         try:
             # populate entries with only those newer than the previous time
             # the feed was updated
@@ -54,12 +59,25 @@ class Feed(object):
             # no idea how to deal with extracting only new entries if the
             # feed does not provide timestamps, so we just treat it the
             # same as if feedparser raised an exception
+            self.pause_updates(6 * 60)
             return sys.exc_info()
-
-        self.etag = d.get("etag", "")
-        self.modified = d.get("modified", "")
         
         return entries
+
+    def pause_updates(self, duration: float = 24 * 60 * 60):
+        """Rewrites get_new_updates to not download the feed, and return no entries, until duration is elapsed."""
+        self._get_new_entries = self.get_new_entries
+        self.get_new_entries = self._deferupdate
+        self.delay_until = time.time() + duration
+
+    def _deferupdate(self):
+        if time.time() >= self.delay_until:
+            # restore get_new_entries, and let it take over
+            self.get_new_entries = self._get_new_entries
+            del self._get_new_entries
+            return self.get_new_entries()
+        else:
+            return []
 
     def _nullupdate(self):
         self.metadata = {
