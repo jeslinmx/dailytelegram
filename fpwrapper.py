@@ -7,7 +7,7 @@ import feedparser
 class Feed(object):
     def __init__(self, feed_url: str):
         self.url = feed_url
-        self.last_update = time.gmtime()
+        self.previous_entries = []
         self.etag = ""
         self.modified = ""
 
@@ -30,8 +30,6 @@ class Feed(object):
             self.url = d.get("href", self.url)
         if d.get("status", None) == 304:
             # if the server returns a Not Modified, return no entries
-            # self.last_update is not changed as the feed may introduce
-            # entries created earlier than now in a later update
             return []
         if d.get("status", None) == 410:
             # if the feed is Gone, disable future feedparser calls
@@ -46,22 +44,21 @@ class Feed(object):
             "description": d.feed.get("description", "")
         }
 
-        self.etag = d.get("etag", "")
-        self.modified = d.get("modified", "")
+        self.etag = d.get("etag", None)
+        self.modified = d.get("modified", None)
 
-        try:
-            # populate entries with only those newer than the previous time
-            # the feed was updated
-            entries = [ entry for entry in d.entries if entry["published_parsed"] > self.last_update ]
-            # update the last update time
-            self.last_update = max([ entry["published_parsed"] for entry in entries ], default=self.last_update)
-        except KeyError:
-            # no idea how to deal with extracting only new entries if the
-            # feed does not provide timestamps, so we just treat it the
-            # same as if feedparser raised an exception
-            self.pause_updates(6 * 60)
-            return sys.exc_info()
-        
+        # cherry-pick only entries which were not in the previous update
+        # this approach works for feeds which contain all posts ever published
+        # as well as feeds which maintain a rolling window of latest entries.
+        if d.entries:
+            entries = [
+                entry for entry in d.entries
+                if entry not in self.previous_entries
+            ]
+            self.previous_entries = d.entries
+        else:
+            entries = []
+
         return entries
 
     def pause_updates(self, duration: float = 24 * 60 * 60):
