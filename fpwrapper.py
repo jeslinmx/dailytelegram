@@ -47,15 +47,15 @@ class Feed(object):
         self.etag = d.get("etag", None)
         self.modified = d.get("modified", None)
 
-        # cherry-pick only entries which were not in the previous update
+        # cherry-pick only entries which do not match URLs from previous update
         # this approach works for feeds which contain all posts ever published
         # as well as feeds which maintain a rolling window of latest entries.
         if d.entries:
             entries = [
                 entry for entry in d.entries
-                if entry not in self.previous_entries
+                if entry.get("link", "") not in self.previous_entries
             ]
-            self.previous_entries = d.entries
+            self.previous_entries = [entry.get("link", "") for entry in d.entries]
         else:
             entries = []
 
