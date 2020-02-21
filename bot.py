@@ -15,6 +15,7 @@ from telegram.ext import (
     CallbackContext,
     CommandHandler,
     ConversationHandler,
+    Defaults,
     Filters,
     MessageHandler,
     PicklePersistence,
@@ -35,7 +36,6 @@ class SimpleReplies(object):
         def r(upd: Update, ctx: CallbackContext, mapping: dict = {}, **kwargs):
             upd.message.reply_text(
                 text=strings[key].format_map(mapping),
-                parse_mode=ParseMode.MARKDOWN,
                 **kwargs
             )
         return r
@@ -70,7 +70,7 @@ def show_feeds(upd: Update, ctx: CallbackContext):
     """Pretty prints user feeds"""
     feeds = {
         mode : "\n".join((
-            f"{'+' if feed_url in ctx.chat_data['reprs'] else '-'} [{feed.metadata['title']}]({feed_url})"
+            f"{'+' if feed_url in ctx.chat_data['reprs'] else '-'} <a href='{feed.metadata['title']}'>{feed_url}</a>"
             for feed_url, feed
             in ctx.chat_data["feeds"][mode].feeds.items()
         ))
@@ -79,7 +79,7 @@ def show_feeds(upd: Update, ctx: CallbackContext):
     if not feeds["asap"] and not feeds["digest"]:
         reply["nofeeds"](upd, ctx)
     else:
-        reply["showfeeds"](upd, ctx, mapping=feeds, disable_web_page_preview=True)
+        reply["showfeeds"](upd, ctx, mapping=feeds)
 
 # add flow callbacks
 def add_command(upd: Update, ctx: CallbackContext):
@@ -145,13 +145,11 @@ def add_feed(upd: Update, ctx: CallbackContext):
             reply["add_success"](upd, ctx,
                 mapping={"urls":", ".join(success)},
                 reply_markup=ReplyKeyboardRemove(selective=True),
-                disable_web_page_preview=True,
             )
         if duplicates:
             reply["add_dupurl"](upd, ctx,
                 mapping={"urls":", ".join(duplicates)},
                 reply_markup=ReplyKeyboardRemove(selective=True),
-                disable_web_page_preview=True,
             )
         return add_cleanup(upd, ctx)
 
@@ -198,20 +196,18 @@ def remove_command(upd: Update, ctx: CallbackContext):
             reply["remove_feednotfound"](upd, ctx,
                 mapping={"url": url},
                 reply_markup=ReplyKeyboardRemove(selective=True),
-                disable_web_page_preview=True,
             )
         else:
             reply["remove_success"](upd, ctx,
                 mapping={"url": url},
                 reply_markup=ReplyKeyboardRemove(selective=True),
-                disable_web_page_preview=True,
             )
     return MAIN
 
 def remove_cancel_conversation(upd: Update, ctx: CallbackContext):
     reply["remove_cancel"](upd, ctx,
         reply_markup=ReplyKeyboardRemove(selective=True),
-        disable_web_page_preview=True,
+
     )
     return MAIN
 
@@ -260,7 +256,7 @@ def asap_update(ctx: CallbackContext):
             ctx.bot.send_message(
                 chat_id=chat_id,
                 text=entry,
-                parse_mode=ParseMode.MARKDOWN,
+                disable_web_page_preview=False,
             )
 
 @run_async
@@ -277,7 +273,6 @@ def digest_update(ctx: CallbackContext):
         ctx.bot.send_message(
             chat_id=chat_id,
             text="\n".join([msgheader, msgbody]),
-            parse_mode=ParseMode.MARKDOWN
         )
 
 # error handlers
@@ -303,7 +298,6 @@ def report(ctx: CallbackContext, template: str, **kwargs):
     for dev_id in envs["devs"]:
         ctx.bot.send_message(
             chat_id=dev_id,
-            parse_mode=ParseMode.MARKDOWN,
             text=template.format(**kwargs),
         )
 
@@ -317,6 +311,10 @@ def main():
     updater = Updater(
         token=envs["api_token"],
         use_context=True,
+        defaults=Defaults(
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        ),
         persistence=PicklePersistence(filename=f"{envs['pkl_location']}/bot.pkl")
     )
 
