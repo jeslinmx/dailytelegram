@@ -4,7 +4,7 @@ from textwrap import dedent
 envs = {
     "api_token": os.getenv("TELEGRAM_API_TOKEN"),
     "devs": os.getenv("LOG_RECIPIENTS", "").split(","),
-    "asap_freq": int(os.getenv("ASAP_UPDATE_FREQ", 5)),
+    "asap_freq": int(os.getenv("ASAP_UPDATE_FREQ", 5 * 60)),
     "pkl_location": os.getenv("BOT_DATA", ".")
 }
 
