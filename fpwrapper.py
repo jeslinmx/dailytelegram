@@ -23,6 +23,7 @@ class Feed(object):
             # so we just ignore anything that goes wrong with it
             # and worry about it later.
             self.pause_updates()
+            self._nullupdate()
             return sys.exc_info()
 
         if d.get("status", None) == 301:
