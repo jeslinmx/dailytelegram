@@ -11,8 +11,8 @@ class Feed(object):
         self.etag = ""
         self.modified = ""
 
-        # before first run of get_new_entries, pretend the feed is Gone
-        self._nullupdate()
+        # grab feed metadata and populate previous_entries
+        self.get_new_entries()
 
     def get_new_entries(self):
         """Downloads and parses the RSS feed, returning new entries (by timestamp)."""
