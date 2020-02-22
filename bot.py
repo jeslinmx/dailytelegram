@@ -325,6 +325,7 @@ def report(ctx: CallbackContext, template: str, **kwargs):
             text=template.format(**kwargs),
         )
 
+@run_async
 def announce(upd: Update, ctx: CallbackContext):
     if str(upd.effective_chat.id) in envs["devs"]:
         message = " ".join(ctx.args)
