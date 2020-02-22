@@ -1,4 +1,5 @@
 import datetime
+import html
 import logging
 import random
 import traceback
@@ -29,11 +30,22 @@ from localconfig import strings, envs
 # declare symbols for conversation states
 MAIN, ADD_URL, ADD_MODE, REMOVE_URL, EDIT_URL, EDIT_REPR = map(chr, range(6))
 
+class EscapedDict(defaultdict):
+    def __getitem__(self, key):
+        value = defaultdict.__getitem__(self, key)
+        if isinstance(value, str):
+            return html.escape(value)
+        elif isinstance(value, dict):
+            return EscapedDict(self.default_factory, value)
+        else:
+            return value
+
 class SimpleReplies(object):
     """Wrapper providing simple functions which reply with no side effects"""
     def __getitem__(self, key):
         @run_async
         def r(upd: Update, ctx: CallbackContext, mapping: dict = {}, **kwargs):
+            mapping["_escaped"] = EscapedDict(str, mapping)
             upd.message.reply_text(
                 text=strings[key].format_map(mapping),
                 **kwargs
@@ -70,7 +82,7 @@ def show_feeds(upd: Update, ctx: CallbackContext):
     """Pretty prints user feeds"""
     feeds = {
         mode : "\n".join((
-            f"{'+' if feed_url in ctx.chat_data['reprs'] else '-'} <a href='{feed.metadata['title']}'>{feed_url}</a>"
+            f"{'+' if feed_url in ctx.chat_data['reprs'] else '-'} <a href='{feed_url}'>{html.escape(feed.metadata['title'])}</a>"
             for feed_url, feed
             in ctx.chat_data["feeds"][mode].feeds.items()
         ))
@@ -225,6 +237,10 @@ def format_feeds(ctx: CallbackContext, fc: FeedCollection, reprs: dict, defaultr
                 ).format(
                     entry=entry,
                     feed=fc.feeds[url].metadata,
+                    _escaped=EscapedDict(str, {
+                        "entry": entry,
+                        "feed": fc.feeds[url].metadata,
+                    })
                 ) for entry in entries[url]
             ]
         except TypeError:
@@ -233,13 +249,17 @@ def format_feeds(ctx: CallbackContext, fc: FeedCollection, reprs: dict, defaultr
             # from parsing this feed, resulting in a exc_info tuple
             formatted[url] = [strings["fperror"].format(
                 url=url,
+                _escaped=EscapedDict(str, {"url": url}),
             )]
             report(ctx, strings["fperrorreport"],
                 url=url,
                 trace="".join(traceback.format_exception(*entries[url])),
             )
         except KeyError:
-            formatted[url] = [strings["reprerror"].format(url=url)]
+            formatted[url] = [strings["reprerror"].format(
+                url=url,
+                _escaped=EscapedDict(str, {"url": url}),
+            )]
         # remove feed from result if it is empty
         if not formatted[url]:
             del formatted[url]
@@ -268,6 +288,7 @@ def digest_update(ctx: CallbackContext):
     for url in formatted:
         msgheader = strings["digestheader"].format(
             feed=fc.feeds[url].metadata,
+            _escaped=EscapedDict(str, {"feed": fc.feeds[url].metadata}),
         )
         msgbody = "\n".join(reversed(formatted[url]))
         ctx.bot.send_message(
@@ -296,8 +317,11 @@ def bot_error(upd: Update, ctx: CallbackContext):
 
 def report(ctx: CallbackContext, template: str, **kwargs):
     for dev_id in envs["devs"]:
+        # Markdown mode must be used as the Telegram API attempts to
+        # parse html <tag>-like terms even within <pre> tags.
         ctx.bot.send_message(
             chat_id=dev_id,
+            parse_mode=ParseMode.MARKDOWN,
             text=template.format(**kwargs),
         )
 

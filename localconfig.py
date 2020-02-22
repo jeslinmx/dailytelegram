@@ -53,10 +53,10 @@ strings = {
         You currently have no feeds. You may want to /add some feeds, or get /help on how to use this bot.
     """),
     "add_success": dedent("""\
-        Successfully subscribed to {urls}
+        Successfully subscribed to {_escaped[urls]}
     """),
     "add_dupurl": dedent("""\
-        You are already subscribed to {urls}.
+        You are already subscribed to {_escaped[urls]}.
     """),
     "add_requesturl": dedent("""\
         Please enter the feed URL.
@@ -80,10 +80,10 @@ strings = {
         <i>(or /cancel feed removal)</i>
     """),
     "remove_success": dedent("""\
-        Feed {url} removed successfully.
+        Feed {_escaped[url]} removed successfully.
     """),
     "remove_feednotfound": dedent("""\
-        Feed {url} was not found in your feeds.
+        Feed {_escaped[url]} was not found in your feeds.
     """),
     "remove_what": dedent("""\
         Sorry, I did not understand that input. Please enter a valid feed URL.
@@ -92,30 +92,32 @@ strings = {
         Feed deletion cancelled.
     """),
     "asapdefaultrepr": dedent("""\
-        <a href='{entry[title]}'>{entry[link]}</a> - {feed[title]}
+        <a href='{entry[link]}'>{_escaped[entry][title]}</a> - {_escaped[feed][title]}
     """),
     "digestheader": dedent("""\
-        <b>Daily digest from <a href='{feed[title]}'>{feed[link]}</a></b>
+        <b>Daily digest from <a href='{feed[link]}'>{_escaped[feed][title]}</a></b>
         ---
     """),
     "digestdefaultrepr": dedent("""\
-        - <a href='{entry[title]}'>{entry[link]}</a>
+        - <a href='{entry[link]}'>{_escaped[entry][title]}</a>
     """),
     "reprerror": dedent("""\
-        <pre>the repr for {url} is invalid and could not be processed.</pre>
+        <pre>the repr for {_escaped[url]} is invalid and could not be processed.</pre>
     """),
     "fperror": dedent("""\
-         An error occurred while parsing the feed {url}. The devs have been notified; notifications from this feed have been put on pause for 24 hours while we see what can be done.
-    """),
-    "fperrorreport": dedent("""\
-         Error encountered while parsing {url}. Traceback:
-         <pre>{trace}</pre>
+         An error occurred while parsing the feed {_escaped[url]}. The devs have been notified; notifications from this feed have been put on pause for 24 hours while we see what can be done.
     """),
     "error": dedent("""\
         An unforeseen error occurred in the bot. The devs have been notified.
     """),
+    # Markdown mode must be used as the Telegram API attempts to
+    # parse html <tag>-like terms even within <pre> tags.
+    "fperrorreport": dedent("""\
+         Error encountered while parsing {url}. Traceback:
+         ```{trace}```
+    """),
     "errorreport": dedent("""\
         Error encountered in {chat}. Traceback:
-        <pre>{trace}</pre>
+        ```{trace}```
     """),
 }
