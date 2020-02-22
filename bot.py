@@ -325,6 +325,17 @@ def report(ctx: CallbackContext, template: str, **kwargs):
             text=template.format(**kwargs),
         )
 
+def announce(upd: Update, ctx: CallbackContext):
+    if str(upd.effective_chat.id) in envs["devs"]:
+        message = " ".join(ctx.args)
+        for chat_id in ctx.dispatcher.chat_data:
+            ctx.bot.send_message(
+                chat_id=chat_id,
+                text=message,
+            )
+    else:
+        reply["unknowninput"](upd, ctx)
+
 
 def main():
     logging.basicConfig(
@@ -380,6 +391,7 @@ def main():
         persistent=True,
         name="main_conv"
     ))
+    dispatcher.add_handler(CommandHandler("announce", announce))
     dispatcher.add_handler(MessageHandler(Filters.all, reply["uninitialized"]))
     dispatcher.add_error_handler(bot_error)
 
