@@ -290,10 +290,10 @@ def digest_update(ctx: CallbackContext):
             feed=fc.feeds[url].metadata,
             _escaped=EscapedDict(str, {"feed": fc.feeds[url].metadata}),
         )
-        msgbody = "\n".join(reversed(formatted[url]))
+        msgbody = "".join(reversed(formatted[url]))
         ctx.bot.send_message(
             chat_id=chat_id,
-            text="\n".join([msgheader, msgbody]),
+            text="".join([msgheader, msgbody]),
         )
 
 # error handlers
