@@ -413,7 +413,9 @@ def main():
                 context=chat_id,
             )
 
-    updater.start_polling()
+    updater.start_polling(
+        allowed_updates=["message"],
+    )
     updater.idle()
 
 if __name__ == "__main__":
